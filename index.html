@@ -8193,7 +8193,7 @@ window.dzShowWorking=function(mkHotel, mdHotel, roomKey){
    ═══════════════════════════════════════════════════════════════════ */
 (function(){
 'use strict';
-var BUILD='v21-fb-inline';
+var BUILD='v22-flights-fix';
 window.AS_BUILD=BUILD;
 try{ console.log('%cAl Saudia build '+BUILD+' loaded','background:#1F5A3E;color:#fff;padding:3px 9px;border-radius:4px;font-weight:700'); }catch(e){}
 
@@ -8260,7 +8260,8 @@ function startOfToday(){ var d=new Date(); d.setHours(0,0,0,0); return d; }
 function grpDep(g){ return g.dep?new Date(g.dep):null; }
 function isPast(g){ var d=grpDep(g); if(!d) return false; d.setHours(0,0,0,0); return d<startOfToday(); }
 function isToday(g){ var d=grpDep(g); if(!d) return false; d.setHours(0,0,0,0); return d.getTime()===startOfToday().getTime(); }
-function isUpcoming(g){ var d=grpDep(g); if(!d) return true; d.setHours(0,0,0,0); return d>startOfToday(); }
+function isUpcoming(g){ var d=grpDep(g); if(!d) return false; d.setHours(0,0,0,0); return d>startOfToday(); }
+function isNoDate(g){ return !grpDep(g); }
 function sold(g){ return (typeof soldFor==='function')?soldFor(g.id):0; }
 function paxCount(g){ return (typeof RECS!=='undefined')?RECS.filter(function(r){return String(r.grp)===String(g.id);}).length:0; }
 function E(s){ return (typeof esc==='function')?esc(s):String(s==null?'':s); }
@@ -8344,11 +8345,12 @@ window.renderFlightRecords=function(){
     return true;
   });
   // upcoming first (soonest first), then past (most recent first)
+  function rank(g){ if(isNoDate(g)) return 2; if(isPast(g)) return 3; if(isToday(g)) return 1; return 0; }
   list.sort(function(a,b){
-    var pa=isPast(a), pb=isPast(b);
-    if(pa!==pb) return pa?1:-1;
+    var ra=rank(a), rb=rank(b);
+    if(ra!==rb) return ra-rb;
     var da=grpDep(a)?grpDep(a).getTime():0, db=grpDep(b)?grpDep(b).getTime():0;
-    return pa? db-da : da-db;
+    return ra===3? db-da : da-db;  // past: most recent first, others: soonest first
   });
 
   var body=document.getElementById('fr-body');
@@ -8357,7 +8359,7 @@ window.renderFlightRecords=function(){
 
   var html='', lastBucket='';
   list.forEach(function(g){
-    var bucket=isPast(g)?'Past / Flown':(isToday(g)?'Departing Today':'Upcoming');
+    var bucket=isNoDate(g)?'No date set':(isPast(g)?'Past / Flown':(isToday(g)?'Departing Today':'Upcoming'));
     if(bucket!==lastBucket){
       html+='<div style="font-size:12px;font-weight:800;color:#8a8f8a;text-transform:uppercase;letter-spacing:.6px;margin:18px 0 10px;display:flex;align-items:center;gap:8px"><span style="height:1px;flex:1;background:#E2E8E2"></span>'+bucket+'<span style="height:1px;flex:1;background:#E2E8E2"></span></div>';
       lastBucket=bucket;
